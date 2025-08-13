@@ -36,17 +36,18 @@ pkgs.stdenv.mkDerivation {
   	"dbusservicedir=$out/etc/dbus-1/services"
   ];
 
+
   configureFlags = [
-    "--with-systemdsystemunitdir=${pkgs.systemd}/lib/systemd/system"
-    "--sysconfdir=$out/etc"
-    "--with-store-dir=$out/var/lib/certmonger"
-    "--with-session-bus-services-dir=$out/etc/dbus-1/services"
+  	"--with-file-store-dir=/var/lib/certmonger"
   ];
 
   preConfigure = ''
     substituteInPlace configure.ac \
-      --replace 'AC_DEFINE_UNQUOTED(CM_STORE_CONFIG_DIRECTORY,"$mysysconfdir/''${PACKAGE_NAME}"' \
-                'AC_DEFINE_UNQUOTED(CM_STORE_CONFIG_DIRECTORY,"$out/etc/''${PACKAGE_NAME}"'
+    --replace 'mylocalstatedir="$localstatedir/lib/''${PACKAGE_NAME})"' \
+              'mylocalstatedir="/var/lib/''${PACKAGE_NAME}"'
+
+    --replace 'AC_DEFINE_UNQUOTED(CM_STORE_CONFIG_DIRECTORY,"$mysysconfdir/''${PACKAGE_NAME}"' \
+              'AC_DEFINE_UNQUOTED(CM_STORE_CONFIG_DIRECTORY,"$out/etc/''${PACKAGE_NAME}"'
  
     substituteInPlace dbus/Makefile.in \
       --replace /etc/dbus-1 $out/etc/dbus-1
@@ -56,13 +57,21 @@ pkgs.stdenv.mkDerivation {
 
     substituteInPlace dbus/Makefile.in \
       --replace '$(mkdir_p) $(DESTDIR)$(dbusservicedir)' 'true'
+
+    sed -i '/^install-data-hook::/a\\ttrue' src/Makefile.am
+    sed -i 's|\$mylocalstatedir|/var/lib|g' configure.ac
+
     '';
 
   configurePhase = ''
     autoreconf -fi
+
+    sed -i '/^install-data-hook::/a\\ttrue' src/Makefile.in
+    sed -i 's|\$mylocalstatedir|/var/lib|g' configure.ac
+    
     ./configure --prefix=$out \
       --with-systemdsystemunitdir=${pkgs.systemd}/lib/systemd/system \
-      --with-store-dir=$out/var/lib/certmonger \
+      --with-store-dir=/var/lib/certmonger \
       --sysconfdir=$out/etc \
       --with-session-bus-services-dir=$out/etc/dbus-1/services
 
@@ -85,7 +94,7 @@ pkgs.stdenv.mkDerivation {
   ];
   
   installPhase = "make install";
-
+  
   meta = {
     description = "Daemon that monitors and renews certificates via CAs";
     homepage = "https://pagure.io/certmonger";

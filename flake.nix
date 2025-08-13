@@ -5,17 +5,19 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+    let
+      systems = flake-utils.lib.defaultSystems;
+    in flake-utils.lib.eachSystem systems (system:
       let
-        pkgs = import nixpkgs {
-          inherit system;
-        };
+        pkgs = nixpkgs.legacyPackages.${system};
+        certmonger = pkgs.callPackage ./pkgs/certmonger.nix { inherit pkgs; };
       in {
-      	packages.certmonger = import ./pkgs/certmonger.nix { inherit pkgs; };
-      	defaultPackage = self.packages.${system}.certmonger;
-      	devShell = pkgs.mkShell {
-      	  buildInputs = with pkgs; [ autoconf automake libtool pkg-config ];
-      	};
+        packages.certmonger = certmonger;
+        packages.default = certmonger;
       }
-    );
+    ) // {
+      nixosModules = {
+        certmonger = import ./modules/certmonger.nix;
+      };
+    };
 }
