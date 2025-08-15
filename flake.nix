@@ -11,9 +11,11 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
         certmonger = pkgs.callPackage ./pkgs/certmonger.nix { inherit pkgs; };
+        cepces = pkgs.callPackage ./pkgs/cepces.nix { inherit pkgs; };
       in {
         packages.certmonger = certmonger;
         packages.default = certmonger;
+        packages.cepces = cepces;
       }
     ) // {
       nixosModules = {
