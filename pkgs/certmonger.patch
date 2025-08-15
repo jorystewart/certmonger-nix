@@ -1,0 +1,53 @@
+--- a/configure.ac	2025-08-15 10:03:09.024077700 +0900
++++ b/configure.ac	2025-08-15 12:44:10.080530100 +0900
+@@ -57,7 +57,7 @@
+ mylocalstatedir=`eval echo $mylocalstatedir | sed "s,NONE,$ac_default_prefix,g"`
+ mylocalstatedir=`eval echo $mylocalstatedir | sed "s,NONE,,g"`
+ 
+-CM_STORE_SYSTEM_LOCK_FILE="$mylocalstatedir/lock"
++CM_STORE_SYSTEM_LOCK_FILE="/var/lib/certmonger/lock"
+ CM_STORE_SYSTEM_LOCK_FILE_ENV="${UPCASE_PACKAGE_NAME}_SYSTEM_LOCK_FILE"
+ AC_SUBST(CM_STORE_SYSTEM_LOCK_FILE)
+ AC_SUBST(CM_STORE_SYSTEM_LOCK_FILE_ENV)
+@@ -66,7 +66,7 @@
+ AC_DEFINE_UNQUOTED(CM_STORE_SYSTEM_LOCK_FILE_ENV,"${CM_STORE_SYSTEM_LOCK_FILE_ENV}",
+ 		   [Define to the name of the environment variable which can specify the location of the system daemon lock file.])
+ 
+-CM_STORE_REQUESTS_DIRECTORY="$mylocalstatedir/requests"
++CM_STORE_REQUESTS_DIRECTORY="/var/lib/certmonger/requests"
+ CM_STORE_REQUESTS_DIRECTORY_ENV="${UPCASE_PACKAGE_NAME}_REQUESTS_DIR"
+ AC_SUBST(CM_STORE_REQUESTS_DIRECTORY)
+ AC_SUBST(CM_STORE_REQUESTS_DIRECTORY_ENV)
+@@ -77,7 +77,7 @@
+ AC_DEFINE_UNQUOTED(CM_STORE_REQUESTS_DIRECTORY_ENV,"${CM_STORE_REQUESTS_DIRECTORY_ENV}",
+ 		   [Define to the name of the environment variable which can specify the directory for tracking requests.])
+ 
+-CM_STORE_CAS_DIRECTORY="$mylocalstatedir/cas"
++CM_STORE_CAS_DIRECTORY="/var/lib/certmonger/cas"
+ CM_STORE_CAS_DIRECTORY_ENV="${UPCASE_PACKAGE_NAME}_CAS_DIR"
+ AC_SUBST(CM_STORE_CAS_DIRECTORY)
+ AC_SUBST(CM_STORE_CAS_DIRECTORY_ENV)
+@@ -88,7 +88,7 @@
+ AC_DEFINE_UNQUOTED(CM_STORE_CAS_DIRECTORY_ENV,"${CM_STORE_CAS_DIRECTORY_ENV}",
+ 		   [Define to the name of the environment variable which can specify the directory for tracking CAs.])
+ 
+-CM_STORE_LOCAL_CA_DIRECTORY="$mylocalstatedir/local"
++CM_STORE_LOCAL_CA_DIRECTORY="/var/lib/certmonger/local"
+ CM_STORE_SESSION_LOCAL_CA_DIRECTORY=".config/${PACKAGE_NAME}/local"
+ CM_STORE_LOCAL_CA_DIRECTORY_ENV="${UPCASE_PACKAGE_NAME}_LOCAL_CA_DIR"
+ AC_SUBST(CM_STORE_LOCAL_CA_DIRECTORY)
+
+--- a/src/Makefile.am	2025-08-15 10:03:09.049608200 +0900
++++ b/src/Makefile.am	2025-08-15 13:25:11.251681300 +0900
+@@ -24,11 +24,6 @@
+ pkgsysconfdir = $(sysconfdir)/$(PACKAGE)
+ pkgsysconf_DATA = certmonger.conf
+ EXTRA_PROGRAMS =
+-install-data-hook::
+-	chmod go-rwx $(DESTDIR)$(pkgsysconfdir)/certmonger.conf
+-	mkdir -m 700 -p $(DESTDIR)@CM_STORE_CAS_DIRECTORY@
+-	mkdir -m 700 -p $(DESTDIR)@CM_STORE_REQUESTS_DIRECTORY@
+-	mkdir -m 700 -p $(DESTDIR)@CM_STORE_LOCAL_CA_DIRECTORY@
+ noinst_LIBRARIES = libcm.a libcm-o.a
+ libcm_a_CFLAGS = $(AM_CFLAGS) $(NSS_CFLAGS)
+ libcm_a_SOURCES = \
