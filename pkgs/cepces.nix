@@ -47,6 +47,10 @@ pythonPackages.buildPythonPackage {
 
     makeWrapper $out/bin/cepces-submit $out/bin/cepces-submit \
       --set PYTHONPATH "${pythonPath}:$out/${python.sitePackages}"
+
+    mkdir -p $out/etc
+    cp conf/cepces.conf.dist $out/etc/cepces.conf
+    cp conf/logging.conf.dist $out/etc/logging.conf
   '';
 
   checkPhase = ''

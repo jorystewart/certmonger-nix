@@ -14,11 +14,23 @@
       type = lib.types.str;
       description = "PEM-formatted copy of the SCEP server's CA certificate";
     };
-    cepces.enable = lib.mkEnableOption "Enable cepces plugin for certmonger";
-    
+    cepces = {
+      enable = lib.mkEnableOption "Enable cepces plugin for certmonger";
+      authMechanism = lib.mkOption {
+        type = lib.types.enum [ "anonymous" "kerberos" "usernamePassword" "certificate"];
+        default = "kerberos";
+        description = "Authentication mechanism for connecting to the service endpoint. Only Kerberos is tested at this time.";
+      };
+      keytab = lib.mkOption {
+      	type = lib.types.str;
+      	description = "Path to a Kerberos keytab. If blank, system default is used.";
+      }; 
+    };
   };
 
-  config = lib.mkIf config.services.certmonger.enable {
+  config = lib.mkMerge [
+
+   (lib.mkIf config.services.certmonger.enable {
   
     users.groups.certmonger = {};
 
@@ -52,7 +64,34 @@
       inputs.certmonger.packages.${pkgs.system}.certmonger ]
       ++ lib.optional config.services.certmonger.cepces.enable
         inputs.certmonger.packages.${pkgs.system}.cepces;
-  };
+  })
+  
+  (lib.mkIf config.services.certmonger.cepces.enable (
+    let
+      baseConfig = builtins.fromTOML (builtins.readFile "${inputs.certmonger.packages.${pkgs.system}.cepces/etc/cepces.conf}");
+      modifiedConfig = baseConfig // { 
+        server = config.services.certmonger.ca.name;
+        endpoint = baseConfig.endpoint // config.services.certmonger.ca.url;
+      
+      };
+    in {
+  	  environment.etc."cepces/cepces.conf".source = pkgs.formats.toml.generate modifiedConfig;
+  	}))
+  ];
+  
+
+  /*systemd.services.configure-cepces = lib.mkIf config.services.certmonger.cepces.enable {
+  	description = "Configure cepces";
+  	after = [ "network.target" ];
+  	wantedBy = [ "multi-user.target" ];
+  	serviceConfig = {
+  	  Type = "oneshot";
+  	  ExecStart = '${inputs.certmonger.packages.${pkgs.system}.cepces/}'
+  	    
+  	      
+  	  '';
+  	};
+  };*/
 
 
   
