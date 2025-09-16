@@ -8,21 +8,24 @@
     };
     ca.url = lib.mkOption {
       type = lib.types.str;
-      description = "URL of the CA server's SCEP interface";
+      default = "https://\${server}/ADPolicyProvider_CEP_\${auth}/service.svc/CEP";
+      description = "CEP server URL";
     };
-    ca.certificate = lib.mkOption {
+    ca.certificates = lib.mkOption {
       type = lib.types.str;
-      description = "PEM-formatted copy of the SCEP server's CA certificate";
+      default = "";
+      description = "PEM-formatted copy of the CEP server's CA certificate chain, or a directory containing it. If left blank, uses system default.";
     };
     cepces = {
       enable = lib.mkEnableOption "Enable cepces plugin for certmonger";
       authMechanism = lib.mkOption {
-        type = lib.types.enum [ "anonymous" "kerberos" "usernamePassword" "certificate"];
-        default = "kerberos";
+        type = lib.types.enum [ "Anonymous" "Kerberos" "UsernamePassword" "Certificate" ];
+        default = "Kerberos";
         description = "Authentication mechanism for connecting to the service endpoint. Only Kerberos is tested at this time.";
       };
       keytab = lib.mkOption {
       	type = lib.types.str;
+      	default = "";
       	description = "Path to a Kerberos keytab. If blank, system default is used.";
       }; 
     };
@@ -68,14 +71,26 @@
   
   (lib.mkIf config.services.certmonger.cepces.enable (
     let
-      baseConfig = builtins.fromTOML (builtins.readFile "${inputs.certmonger.packages.${pkgs.system}.cepces/etc/cepces.conf}");
-      modifiedConfig = baseConfig // { 
-        server = config.services.certmonger.ca.name;
-        endpoint = baseConfig.endpoint // config.services.certmonger.ca.url;
-      
-      };
+      baseConfig = builtins.readFile "${inputs.certmonger.packages.${pkgs.system}.cepces}/etc/cepces.conf";
+
+      defaultStrings = [ "server=ca" ]
+        ++ lib.optional (config.services.certmonger.ca.url != "https://\${server}/ADPolicyProvider_CEP_\${auth}/service.svc/CEP") "endpoint=https://\${server}/ADPolicyProvider_CEP_\${auth}/service.svc/CEP"
+        ++ lib.optional (config.services.certmonger.ca.certificates != "") "#cas="
+        ++ lib.optional (config.services.certmonger.cepces.authMechanism != "Kerberos") "auth=Kerberos"
+        ++ lib.optional (config.services.certmonger.cepces.keytab != "") "#keytab=";
+        
+
+      newStrings = [ "server=${config.services.certmonger.ca.name}" ]
+        ++ lib.optional (config.services.certmonger.ca.url != "https://\${server}/ADPolicyProvider_CEP_\${auth}/service.svc/CEP") "endpoint=${config.services.certmonger.ca.url}" 
+        ++ lib.optional (config.services.certmonger.ca.certificates != "") "cas=${config.services.certmonger.ca.certificates}"
+        ++ lib.optional (config.services.certmonger.cepces.authMechanism != "Kerberos") "auth=${config.services.certmonger.cepces.authMechanism}"
+        ++ lib.optional (config.services.certmonger.cepces.keytab != "") "keytab=${config.services.certmonger.cepces.keytab}";
+        
+        
+      modifiedConfig = lib.replaceStrings defaultStrings newStrings baseConfig;
+      configFile = pkgs.writeText "cepces.conf" modifiedConfig;
     in {
-  	  environment.etc."cepces/cepces.conf".source = pkgs.formats.toml.generate modifiedConfig;
+  	  environment.etc."cepces/cepces.conf".source = configFile;
   	}))
   ];
   
